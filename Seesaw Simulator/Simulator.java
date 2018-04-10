@@ -1,169 +1,137 @@
 /*
 Seesaw Simpualtor
 
-Works fine, didnt get to fully debug a few minor checkstyle issues
-
 
 */
+
 import java.io.*;
 
 import java.util.*;
 
-import java.util.concurrent.locks.*;
+public class Simulator {
+	private static double wilmaH = 7.0;
+	private static double fredH = 1.0;
+
+	public static class Mutex {
+		public int who;
+		public int count;
 
 
+		public Mutex(int timeCount, int person) {
+			who = timeCount;
+			count = person;
+		}
 
-public class Simulator { 
-  private static double wilmaHeight = 7.0;
-  private static double fredHeight = 1.0;
+			public synchronized void Change() {
+				if(who == 0) {
+					++who;
+				}
+				else if(who ==1) {
+					--who;
+				}
+				notifyAll();
+				}
+				public synchronized void notTurn(int id) throws InterruptedException {
+					while(who != id) {
+						wait();
+					}
+				}
+			}
+			static private class FredsTurn extends Thread implements Runnable {
+				private static Mutex MUT_ID;
+				private static int THIS_ID;
 
-  //setting both fred and wilma as a double to meet specification requiremtns
+				public FredsTurn(int id, Mutex MUT_IDtwo) {
+					THIS_ID = id;
+					MUT_ID = MUT_IDtwo;
+				}
+				static private class WilmasTurn extends Thread implements Runnable {
+					private static Mutex MUT_ID;
+					private static int THIS_ID;
 
-  public static class Mutex {
-    public int round;
-    public int count;
+					public WilmasTurn(Mutex m, int num) {
+						MUT_ID = m;
+						THIS_ID = num;
+					}
+					public void wilmaSaw() {
+						for(int i = 0; i < 10; ++i) {
+							try {
+								MUT_ID.notTurn(THIS_ID);
+								System.out.println("Wilma: Up");
+								while(wilmaH < 7.0) {
+									System.out.println("Wilmas Height is at: " + wilmaH);
+									System.out.println("Freds Height is at : " + fredH);
+									wilmaH += 1.5;
+									fredH -= 1.5;
+								}
+								System.out.println("Wilmas Height after increment: " +wilmaH);
+								System.out.println("Freds Height after decriment : " +fredH);
+								Thread.sleep(1000);
+								MUT_ID.Change();
+							}
+							catch(InterruptedException e) {
+								e.printStackTrace();
+							}
+						}
+					}
+					public void run() {
+						wilmaSaw();
+					}
+				}
 
-    public Mutex(int person, int timeCount) { //pass mutex varibles into constructor
-      round = person;
-      count = timeCount;
-    }
-    
+				public void fredSee() {
+					for(int j = 0; j < 10; ++j) {
+						try {
+							MUT_ID.notTurn(THIS_ID);
+							System.out.println("Fred: Up");
+							while(fredH < 7.0) {
+								System.out.println("Wilmas Height is at: " + wilmaH);
+									System.out.println("Freds Height is at : " + fredH);
+									--wilmaH;
+									++fredH;
 
+							}
+							System.out.println("Wilmas Height after decriment: " +wilmaH);
+								System.out.println("Freds Height after increment: " +fredH);
+								Thread.sleep(1000);
+								MUT_ID.Change();
 
-    /**
-    * this synchronized roundPause passed the variable into id to catch exception e
-    */
+						}
+						catch(InterruptedException e) {
+							e.printStackTrace();
+						}
+					}
+				}
+				public void run() {
+					fredSee();
+				}
+			}
+			public static void main(String args[]) {
+				ArrayList<Thread> threads = new ArrayList<>();
+				Mutex myLock = new Mutex(0, 2);
 
+				Thread tA = new Thread(new FredsTurn(0, myLock));
+				Thread tB = new Thread(new WilmasTurn(1, myLock));
 
-    public synchronized void roundPause(int id) throws InterruptedException {
-      while (round != id) { // 
-        wait();
-      }
-    }
-  
+				threads.add(new Thread(tA));
+				threads.add(new Thread(tB));
 
-    /**
-     * this synchronized roudswap synchronizes with previous
-     */
+				try {
+					for(Thread t : threads) {
+						t.start();
+					}
+				}
+				catch(Exception e) {
+					System.out.println("Error, not starting. please try again");
 
-   
-    public synchronized void roundSwap() { //System.out.println("Inside turnswitch");
-
-
-      if (round == 0) {
-        ++round;
-      }   else if (round == 1) {
-        --round;
-      } 
-      notifyAll();
-    }
-  }
-  /**
-  * The Sychronized constructuors and keywords in java come in hand for this situation most
-  * because it means the method can not be executed by two threads at the same time, which ultimately
-  * will allow the program to run and synchronize.
-  */
-  
-  private static class WilmasTurn extends Thread implements Runnable {
-    private static int THIS_ID;
-    private static Mutex MUTEX_DOUBLE;
-
-    public WilmasTurn(int id, Mutex Mt) {
-      THIS_ID = id;
-      MUTEX_DOUBLE = Mt;
-    } 
-
-    public void wilmaSaw() {
-      for (int i = 0; i < 10; ++i) {
-        try { 
-          MUTEX_DOUBLE.roundPause(THIS_ID);
-          System.out.println("Wilma: Up");
-          while (wilmaHeight < 7.0) { 
-            System.out.println("Wilmas Height is at: " + wilmaHeight);
-            System.out.println("Freds Height is at: " + fredHeight);
-            wilmaHeight += 1.5;
-            fredHeight -= 1.5;
-          }
-          System.out.println("Wilmas Height is at: " + wilmaHeight);
-          System.out.println("Freds Height is at: " + fredHeight);
-          Thread.sleep(1000);
-          MUTEX_DOUBLE.roundSwap();
-        }  catch (InterruptedException e) { 
-          e.printStackTrace(); 
-        } 
-      } 
-    }
-
-    public void run() { 
-      wilmaSaw();
-    }
-  }
-
-  private static class FredsTurn extends Thread implements Runnable {
-    private static int THIS_ID;
-    private static Mutex MUTEX_DOUBLE;
-   
-  
-    public FredsTurn(int n, Mutex m) {
-      THIS_ID = n; 
-      MUTEX_DOUBLE = m;
-    }
-
-
-    public void fredSee() {
-      for (int j = 0; j < 10; ++j) {
-        try {
-          MUTEX_DOUBLE.roundPause(THIS_ID);
-          System.out.println("Fred: Up");
-          while (fredHeight < 7.0) {
-            System.out.println("Wilmas Height is at: " + wilmaHeight);
-            System.out.println("Freds Height is at: " + fredHeight);
-            --wilmaHeight;
-            ++fredHeight;
-          }
-          System.out.println("Wilmas Height is at: " + wilmaHeight);
-          System.out.println("Freds Height is at: " + fredHeight);
-          Thread.sleep(1000);
-          MUTEX_DOUBLE.roundSwap();
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-      }
-    }
-
-    public void run() {
-      fredSee();
-    }
-  }
-  /**
-  * this public static void main funciton.
-  */
-
-  public static void main(String args[]) {
-    //general set up for threads and arrays
-    ArrayList<Thread> funstuff = new ArrayList<>();
-    Mutex myLock = new Mutex(0, 2);
-   //using two threads
-
-    Thread a1 = new Thread(new WilmasTurn(0, myLock));
-    funstuff.add(new Thread(a1));
-    Thread a2 = new Thread(new FredsTurn(1, myLock));
-    funstuff.add(new Thread(a2));
-
-    try {
-      for (Thread a : funstuff) {
-        a.start();
-      }
-    } catch (Exception e) {
-      System.out.println("Error, not starting. please try again");
-
-    }
-    try {
-      for (Thread a : funstuff) {
-        a.join();
-      }
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-  }
-}
+				}
+				try {
+					for(Thread t : threads) {
+						t.join();
+					}
+				}
+				catch(InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+			}
