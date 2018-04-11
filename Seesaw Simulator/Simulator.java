@@ -1,169 +1,134 @@
-/*
-Seesaw Simpualtor
+/**
+ *David Jensen, Fred - Wilma Seesaw Simulator, using 2 semephore and 2 Threads.
+ *
+ */
 
-Works fine, didnt get to fully debug a few minor checkstyle issues
-
-
-*/
-import java.io.*;
-
-import java.util.*;
-
-import java.util.concurrent.locks.*;
+import java.util.concurrent.*;
 
 
 
-public class Simulator { 
-  private static double wilmaHeight = 7.0;
-  private static double fredHeight = 1.0;
+/**
+ *Declaring the doubles as well as semephores for the seesaw to run.
+ */
 
-  //setting both fred and wilma as a double to meet specification requiremtns
+public class Simulator {
+  private static int runningTime;
+  private static double wilmaH;
+  private static double fredH;
 
-  public static class Mutex {
-    public int round;
-    public int count;
-
-    public Mutex(int person, int timeCount) { //pass mutex varibles into constructor
-      round = person;
-      count = timeCount;
-    }
-    
+  static Semaphore thisisWilma = new Semaphore(0);
+  static Semaphore thisisFred = new Semaphore(1);
 
 
-    /**
-    * this synchronized roundPause passed the variable into id to catch exception e
-    */
-
-
-    public synchronized void roundPause(int id) throws InterruptedException {
-      while (round != id) { // 
-        wait();
-      }
-    }
-  
-
-    /**
-     * this synchronized roudswap synchronizes with previous
-     */
-
-   
-    public synchronized void roundSwap() { //System.out.println("Inside turnswitch");
-
-
-      if (round == 0) {
-        ++round;
-      }   else if (round == 1) {
-        --round;
-      } 
-      notifyAll();
-    }
-  }
   /**
-  * The Sychronized constructuors and keywords in java come in hand for this situation most
-  * because it means the method can not be executed by two threads at the same time, which ultimately
-  * will allow the program to run and synchronize.
-  */
-  
-  private static class WilmasTurn extends Thread implements Runnable {
-    private static int THIS_ID;
-    private static Mutex MUTEX_DOUBLE;
-
-    public WilmasTurn(int id, Mutex Mt) {
-      THIS_ID = id;
-      MUTEX_DOUBLE = Mt;
-    } 
-
-    public void wilmaSaw() {
-      for (int i = 0; i < 10; ++i) {
-        try { 
-          MUTEX_DOUBLE.roundPause(THIS_ID);
-          System.out.println("Wilma: Up");
-          while (wilmaHeight < 7.0) { 
-            System.out.println("Wilmas Height is at: " + wilmaHeight);
-            System.out.println("Freds Height is at: " + fredHeight);
-            wilmaHeight += 1.5;
-            fredHeight -= 1.5;
-          }
-          System.out.println("Wilmas Height after incriment: " + wilmaHeight);
-          System.out.println("Freds Height after decriment: " + fredHeight);
-          Thread.sleep(1000);
-          MUTEX_DOUBLE.roundSwap();
-        }  catch (InterruptedException e) { 
-          e.printStackTrace(); 
-        } 
-      } 
-    }
-
-    public void run() { 
-      wilmaSaw();
-    }
-  }
-
-  private static class FredsTurn extends Thread implements Runnable {
-    private static int THIS_ID;
-    private static Mutex MUTEX_DOUBLE;
-   
-  
-    public FredsTurn(int n, Mutex m) {
-      THIS_ID = n; 
-      MUTEX_DOUBLE = m;
-    }
+   *Wilmas turn to run, she will aquire her semephore, and release Freds.
+   */
 
 
-    public void fredSee() {
-      for (int j = 0; j < 10; ++j) {
-        try {
-          MUTEX_DOUBLE.roundPause(THIS_ID);
-          System.out.println("Fred: Up");
-          while (fredHeight < 7.0) {
-            System.out.println("Wilmas Height is at: " + wilmaHeight);
-            System.out.println("Freds Height is at: " + fredHeight);
-            --wilmaHeight;
-            ++fredHeight;
-          }
-          System.out.println("Wilmas Height after decriment: " + wilmaHeight);
-          System.out.println("Freds Height after incriment: " + fredHeight);
-          Thread.sleep(1000);
-          MUTEX_DOUBLE.roundSwap();
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-      }
-    }
+  static class WilmaSaw implements Runnable {
 
     public void run() {
-      fredSee();
+
+      while (runningTime < 100) {
+
+        try {
+          thisisWilma.acquire();
+          while (fredH > 1) {
+            ++runningTime;
+            wilmaH += 1.5;
+            fredH -= 1.5;
+
+            if (runningTime > 100) 
+              break;
+            
+              System.out.println("The Current time in seconds is:" + runningTime);
+              System.out.println("Wilmas Height is: " + wilmaH);
+              System.out.println("Freds Height is: " + fredH);
+            
+
+            if (runningTime % 10 == 0) 
+              System.out.println();
+              Thread.sleep(1050);
+            //run
+             // while
+          } //try
+        } catch (InterruptedException e) { //exception
+          System.out.println("Error, Please try again: " + e);
+        }
+        thisisFred.release();
+
+
+      } //while
+    } // if
+  } // if
+
+  /**
+   * Freds turn to run, he will aquire his semephore, and release wilmas.
+   */
+
+  static class FredSee implements Runnable {
+
+    public void run() {
+      while (runningTime < 100) {
+        try {
+          thisisFred.acquire();
+          while (fredH < 7) {
+            ++runningTime;
+            ++fredH;
+            --wilmaH;
+
+            if (runningTime > 100) 
+              break;
+            
+              System.out.println("The Current time in seconds is:" + runningTime);
+              System.out.println("Wilmas Height is: " + wilmaH);
+              System.out.println("Freds Height is: " + fredH);
+
+              if (runningTime % 10 == 0) 
+                System.out.println();
+                Thread.sleep(1050);
+              
+            
+          }
+        } catch (InterruptedException e) {
+          System.out.println("Error, Please try again: " + e);
+        }
+        thisisWilma.release();
+      }
     }
   }
+
   /**
-  * this public static void main funciton.
-  */
+   * This is outside the main function, this required javadoc [comment].
+   */
+  public static void main(String[] args) {  /* require jdoc comment/*
+     /**
+      * inside the main function, this will run in run threaded with everything else
+      */
 
-  public static void main(String args[]) {
-    //general set up for threads and arrays
-    ArrayList<Thread> funstuff = new ArrayList<>();
-    Mutex myLock = new Mutex(0, 2);
-   //using two threads
+    wilmaH = 7.0;
+    fredH = 1.0; 
+    runningTime = 0;
 
-    Thread a1 = new Thread(new WilmasTurn(0, myLock));
-    funstuff.add(new Thread(a1));
-    Thread a2 = new Thread(new FredsTurn(1, myLock));
-    funstuff.add(new Thread(a2));
-
-    try {
-      for (Thread a : funstuff) {
-        a.start();
-      }
-    } catch (Exception e) {
-      System.out.println("Error, not starting. please try again");
-
-    }
-    try {
-      for (Thread a : funstuff) {
-        a.join();
-      }
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
+    System.out.println("Time of program starting is" + runningTime + "Seconds");
+    System.out.println("Wilmas Height before starting is " + wilmaH + "Feet");
+    System.out.println("Freds Height before starting is " + fredH + "Feet");
+    Thread throughputWilma = new Thread(new WilmaSaw());
+    Thread throughputFred = new Thread(new FredSee());
+    throughputWilma.start();
+    throughputFred.start();
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+ 
